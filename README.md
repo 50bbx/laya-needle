@@ -183,10 +183,15 @@ not line up with the live page, instead of dropping the highlight.
 ```bash
 python3 tests/test_sentences.py
 python3 tests/test_search.py
+python3 tests/test_extension.py
 python3 scripts/package_extension.py
 ```
 
 The tests inject a fake model, so they need no weights and run in milliseconds.
+`test_extension.py` is a static check on the extension: that every asset a page
+references exists, that each page loads its script, that every `#id` the script
+queries is in the HTML, and that the extension's default URL matches the port
+the server listens on.
 
 After changing anything in `extension/`, click **Reload** on the laya-needle card
 in `chrome://extensions`, then refresh the page before reopening it.

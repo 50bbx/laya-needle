@@ -32,10 +32,11 @@ form.addEventListener("submit", async (event) => {
       throw new Error("Enter an http or https server URL.");
     if (url.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(url.hostname))
       throw new Error("Use HTTPS for anything that is not localhost.");
-    const granted = await chrome.permissions.request({
-      origins: [`${url.protocol}//${url.hostname}/*`],
-    });
-    if (!granted) throw new Error("Permission is needed to reach this server.");
+    const origins = [`${url.protocol}//${url.hostname}/*`];
+    // 127.0.0.1 is granted at install. Requesting it again throws, so check first.
+    if (!(await chrome.permissions.contains({ origins })))
+      if (!(await chrome.permissions.request({ origins })))
+        throw new Error("Permission is needed to reach this server.");
     await chrome.storage.local.set({ server: url.origin });
     status.textContent = "Saved. Open a webpage and press Cmd+Shift+F.";
   } catch (error) {
