@@ -123,11 +123,15 @@ Laya scores passages well and picks sentences less well.
 scored 0.985 while every unrelated passage sat under 0.12. That is a wide, safe
 margin.
 
-**It matches words more than meaning.** This is the sharpest limit. On that
-Wikipedia article the row `Budget · $175 million` scores **0.820** for the search
-"budget" and **0.277** for "cost". Same row, same meaning, different word. It
-still ranks 3rd of 120 so you will find it, but the premise of finding what you
-mean rather than what you typed only half holds.
+**It matches words more than meaning, and short rows are unstable.** This is the
+sharpest limit, and the reason a search for "cost" does not find
+`Budget · $175 million` on that article. Scored against "cost", that row lands
+anywhere between 0.011 and 0.277 depending on nothing but whitespace around the
+citation marker. Against "budget" it scores 0.795 and is found immediately.
+Worse, when you search "budget" the *Box office* row scores 0.776, which is the
+same row-shaped fragment with a different meaning, so it cannot separate them
+either. Long prose passages behave; two-column table rows are close to a coin
+toss.
 
 Coaching the instruction does not help. An instruction spelling out *"a budget is
 a cost, a release date is when it came out"* was measured against four others on

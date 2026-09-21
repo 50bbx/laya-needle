@@ -9,8 +9,52 @@
   host.style.cssText = "position:fixed;top:20px;right:20px;z-index:2147483647";
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `<style>
- :host{all:initial}*{box-sizing:border-box}.dock{width:min(510px,calc(100vw - 40px));background:#26362d;color:#f8faf3;border-radius:18px;box-shadow:0 12px 65px #0004;font:13px/1.5 system-ui;padding:15px}.top{display:flex;align-items:center;gap:9px}.brand{display:flex;align-items:center;gap:7px;font-size:17px;font-weight:750;letter-spacing:-.6px;margin-right:auto;color:#d5f58d}.brand svg{width:26px;height:26px;flex-shrink:0}button{font:inherit;cursor:pointer;border:0;border-radius:7px;background:transparent;color:#b9c6b7;padding:6px 9px}button:hover{background:#ffffff12;color:white}.search{display:flex;align-items:center;gap:8px;border-bottom:1px solid #ffffff26;margin-top:13px;padding-bottom:12px}input{width:100%;min-width:0;border:0;background:transparent;outline:none;color:white;font:17px system-ui}input::placeholder{color:#a3b0a0}.go{background:#d5f58d;color:#26362d;font-size:19px}.status{display:flex;align-items:center;gap:6px;margin-top:11px}.label{flex:1;color:#dbe5d6}.nav{background:#ffffff0d}.detail{margin:8px 0 0;color:#9ead99;font-size:11px}.error{color:#ffcca8}button:focus-visible,input:focus-visible{outline:2px solid #d5f58d;outline-offset:2px}
- </style><section class="dock" role="dialog" aria-label="Find with laya-needle"><div class="top"><span class="brand"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="9.4" fill="#c9f078"/><path d="m9 25 12-17 3 2-12 17Zm9-13 3 2" fill="none" stroke="#26362d" stroke-width="2.4" stroke-linecap="round"/></svg><span>laya·needle</span></span><button class="settings" aria-label="Open settings">⚙</button><button class="close" aria-label="Close">✕</button></div><form class="search"><input aria-label="Find what you mean" placeholder="Find what you mean…" maxlength="400"><button class="go" aria-label="Search">↗</button></form><div class="status"><span class="label" aria-live="polite">A thought, a question, a half-remembered idea.</span><button class="nav prev" aria-label="Previous match">↑</button><button class="nav next" aria-label="Next match">↓</button></div><p class="detail"></p></section>`;
+ :host{all:initial}
+ *{box-sizing:border-box}
+ .dock{
+   --bg:#fff; --fg:#111; --muted:#767676; --line:#e3e3e3; --hover:#0000000a;
+   --invert-bg:#111; --invert-fg:#fff;
+   width:min(460px,calc(100vw - 40px));
+   background:var(--bg); color:var(--fg);
+   border:1px solid var(--line); border-radius:12px;
+   box-shadow:0 8px 30px #00000014;
+   font:13px/1.5 system-ui,-apple-system,sans-serif; padding:14px;
+ }
+ @media (prefers-color-scheme:dark){
+   .dock{
+     --bg:#161616; --fg:#f2f2f2; --muted:#9a9a9a; --line:#2e2e2e; --hover:#ffffff12;
+     --invert-bg:#f2f2f2; --invert-fg:#111;
+     box-shadow:0 8px 30px #00000059;
+   }
+ }
+ .top{display:flex;align-items:center;gap:8px}
+ .brand{
+   display:flex;align-items:center;gap:7px;margin-right:auto;
+   font-size:13px;font-weight:600;letter-spacing:-.1px;color:var(--fg);
+ }
+ .brand svg{width:15px;height:15px;flex-shrink:0;display:block}
+ button{
+   font:inherit;cursor:pointer;border:0;border-radius:6px;
+   background:transparent;color:var(--muted);padding:5px 7px;line-height:1;
+ }
+ button:hover{background:var(--hover);color:var(--fg)}
+ .search{
+   display:flex;align-items:center;gap:8px;
+   border-bottom:1px solid var(--line);margin-top:10px;padding-bottom:10px;
+ }
+ input{
+   width:100%;min-width:0;border:0;background:transparent;outline:none;
+   color:var(--fg);font:16px/1.4 system-ui,-apple-system,sans-serif;padding:0;
+ }
+ input::placeholder{color:var(--muted)}
+ .go{background:var(--invert-bg);color:var(--invert-fg);padding:5px 9px;font-size:13px}
+ .go:hover{background:var(--invert-bg);color:var(--invert-fg);opacity:.85}
+ .status{display:flex;align-items:center;gap:4px;margin-top:9px}
+ .label{flex:1;color:var(--fg);font-size:12px}
+ .detail{margin:6px 0 0;color:var(--muted);font-size:11px;line-height:1.45}
+ .error{color:var(--fg);font-weight:600}
+ button:focus-visible,input:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+ </style><section class="dock" role="dialog" aria-label="Find with laya-needle"><div class="top"><span class="brand"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m7 27 13-19"/><path d="m18 10 4 2.7"/><circle cx="21.5" cy="6.5" r="2.6"/></svg><span>laya needle</span></span><button class="settings" aria-label="Open settings">⚙</button><button class="close" aria-label="Close">✕</button></div><form class="search"><input aria-label="Find what you mean" placeholder="Find what you mean…" maxlength="400"><button class="go" aria-label="Search">↗</button></form><div class="status"><span class="label" aria-live="polite">A thought, a question, a half-remembered idea.</span><button class="nav prev" aria-label="Previous match">↑</button><button class="nav next" aria-label="Next match">↓</button></div><p class="detail"></p></section>`;
   document.documentElement.append(host);
   const $ = (s) => shadow.querySelector(s),
     input = $("input"),
@@ -58,7 +102,10 @@
       if (text.length < 12) continue;
       if (text.length > 2200) { truncated = true; continue; }
       if (blocks.length >= 160 || size + text.length > 60000) { truncated = true; break; }
-      blocks.push({ id: `b${blocks.length}`, text, el });
+      // `text` is what the server scores. For a row that is assembled from cells,
+      // so it never equals the element's own text; keep that separately for the
+      // did-this-page-change check below.
+      blocks.push({ id: `b${blocks.length}`, text, raw: el.textContent.trim(), row: el.tagName === "TR", el });
       size += text.length;
     }
     detail.textContent = `${blocks.length} readable passages${truncated ? " · some content omitted" : ""} · scored locally by Laya.`;
@@ -81,11 +128,16 @@
     let selectedSentence = null;
     matches.forEach((match, i) => {
       const block = blocks.find((b) => b.id === match.id);
-      if (!block?.el.isConnected || block.el.textContent.trim() !== block.text) return;
+      if (!block?.el.isConnected || block.el.textContent.trim() !== block.raw) return;
       const context = new Range();
       context.selectNodeContents(block.el);
       ranges.push(context);
-      const sentence = globalThis.LayaNeedleTextRange(block.el, match.focus, block.text);
+      // A row's text is joined from its cells, so no sentence of it exists as one
+      // run in the DOM and no range can be mapped. The row is the unit: light it
+      // all up rather than nothing.
+      const sentence = block.row
+        ? context.cloneRange()
+        : globalThis.LayaNeedleTextRange(block.el, match.focus, block.text);
       if (sentence) {
         sentences.push(sentence);
         if (i === active) selectedSentence = sentence;
@@ -93,8 +145,16 @@
     });
     if (globalThis.CSS?.highlights && globalThis.Highlight) {
       highlightStyle = document.createElement("style");
+      // Both background and colour are set, so a highlight stays legible whatever
+      // the host page uses. The active one is a straight inversion.
       highlightStyle.textContent =
-        "::highlight(laya-needle-matches){background:#edf4e2;color:#344332}::highlight(laya-needle-sentences){background:#d1ed98;color:#2c4228}::highlight(laya-needle-active){background:#bce85f;color:#172414}";
+        "::highlight(laya-needle-matches){background:#f0f0f0;color:#111}" +
+        "::highlight(laya-needle-sentences){background:#dcdcdc;color:#111}" +
+        "::highlight(laya-needle-active){background:#111;color:#fff}" +
+        "@media (prefers-color-scheme:dark){" +
+        "::highlight(laya-needle-matches){background:#2b2b2b;color:#f2f2f2}" +
+        "::highlight(laya-needle-sentences){background:#444;color:#fff}" +
+        "::highlight(laya-needle-active){background:#f2f2f2;color:#111}}";
       document.documentElement.append(highlightStyle);
       const context = new Highlight(...ranges),
         focus = new Highlight(...sentences),
@@ -142,7 +202,7 @@
       if (!result || result.error) throw new Error(result?.error || "Could not complete the search.");
       matches = result.matches.filter((m) => blocks.some((b) => b.id === m.id));
       update();
-      detail.textContent += ` · ${result.elapsedMs} ms · bright = key sentence, pale = context.`;
+      detail.textContent += ` · ${result.elapsedMs} ms · the strongest sentence is inverted.`;
     } catch (error) {
       if (!closed && current === generation) {
         label.textContent = error.message;

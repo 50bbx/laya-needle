@@ -48,6 +48,15 @@ for injected in re.findall(r'files:\s*\[([^\]]+)\]', read("background.js")):
 assert "permissions.contains" in options_js, "check the permission before requesting it"
 assert "optional_host_permissions" in manifest, "a non-default server URL could never be granted"
 
+# A row's text is assembled from its cells, so it never equals the element's own
+# text. Checking freshness against the assembled text silently dropped every
+# table-row highlight in v1.2.0.
+content = read("content.js")
+assert "block.raw" in content and "!== block.text" not in content, \
+    "check freshness against the element's own text, not the text sent to the server"
+assert "raw: el.textContent.trim()" in content, "each block must keep the element's own text"
+assert "block.row" in content, "a row highlights whole; no sentence of it exists as one DOM run"
+
 # The default server URL must agree across the extension and the server.
 default = re.search(r'DEFAULT_SERVER = "([^"]+)"', options_js).group(1)
 assert re.search(r'DEFAULT_SERVER = "([^"]+)"', read("background.js")).group(1) == default, \
