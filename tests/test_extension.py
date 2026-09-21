@@ -67,4 +67,12 @@ with open(os.path.join(ROOT, "server.py"), encoding="utf-8") as f:
     port = re.search(r'PORT = int\(os\.environ\.get\("PORT", "(\d+)"\)\)', f.read()).group(1)
 assert default == f"http://127.0.0.1:{port}", f"extension points at {default}, server listens on {port}"
 
+# v1.4.0 was tagged at a commit whose manifest still said 1.3.1, so the zip
+# reported the wrong version in the panel. Keep the two files in step.
+import tomllib
+with open(os.path.join(ROOT, "pyproject.toml"), "rb") as f:
+    project_version = tomllib.load(f)["project"]["version"]
+assert manifest["version"] == project_version, \
+    f"manifest.json says {manifest['version']}, pyproject.toml says {project_version}"
+
 print("extension: all passed")
