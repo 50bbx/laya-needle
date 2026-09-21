@@ -66,8 +66,12 @@ Open any normal webpage and press **Cmd+Shift+F** (**Ctrl+Shift+F** on Windows
 and Linux), or click the pinned icon. Type what you mean, such as "what happens
 if I cancel?" or "costs beyond the advertised price".
 
-Matching passages get a pale highlight, the sentence that actually answers gets
-a bright one, and **↑ / ↓** jump between matches. **Esc** closes it.
+Matching passages get a soft highlight and the strongest sentence is inverted, so
+the answer is the one bit of the page reading white-on-black. **↑ / ↓** move
+between matches and **Esc** closes it.
+
+The panel, the settings page and the highlights are black and white, and follow
+your system light or dark setting.
 
 ---
 
@@ -150,6 +154,10 @@ the film win?" returns nothing. This is a find-in-page, not a chatbot.
 
 If you get noise, raise `LAYA_NEEDLE_FLOOR` toward `0.5`. If relevant things are
 missing, lower it toward `0.15`.
+
+**A table row is highlighted whole.** Its text is joined from its cells, so no
+sentence of it exists as a single run in the page and no range can be mapped onto
+one. The row is the unit, so the whole row lights up.
 
 **Sentence selection had to be rebuilt.** Needle asks Jev to pick the key
 sentence with one `choice` question. Laya's choice head is close to useless at
