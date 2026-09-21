@@ -18,6 +18,7 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import scorer  # noqa: E402
 from search import THRESHOLD as search_threshold_value, SearchError, search  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -31,6 +32,7 @@ MAX_BODY = 512_000
 THRESHOLD = float(os.environ.get("LAYA_NEEDLE_THRESHOLD", search_threshold_value))
 
 AGENT = None
+SCORE = None
 LOCK = threading.Lock()  # one model on one accelerator: serialise inference
 
 
@@ -54,12 +56,18 @@ def load():
     print(f"loading laya ({MODEL}); the first run downloads weights and takes a few minutes", flush=True)
     started = time.perf_counter()
     AGENT = laya.load("convaiinnovations/laya", subfolder=SUBFOLDER[MODEL])
+    global SCORE
+    if scorer.available:
+        SCORE = scorer.Scorer(AGENT).score
+    else:
+        SCORE = scorer.fallback(AGENT)
+        print("note: laya.common has moved, so passages are scored one at a time", flush=True)
     print(f"ready in {time.perf_counter() - started:.1f}s, running on {describe(AGENT.device)}", flush=True)
 
 
-def predict(state, questions):
+def score(states, instructions):
     with LOCK:
-        return AGENT.predict(state, questions)["answers"]
+        return SCORE(states, instructions)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -108,7 +116,7 @@ class Handler(BaseHTTPRequestHandler):
 
         started = time.perf_counter()
         try:
-            result = search(body, predict, THRESHOLD)
+            result = search(body, score, THRESHOLD)
         except SearchError as e:
             return self._send(e.status, {"error": e.message})
         except Exception:

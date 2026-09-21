@@ -1,10 +1,10 @@
 [project]
 name = "laya-needle"
-version = "1.0.2"
+version = "1.1.0"
 description = "Find webpage passages by meaning, using Laya on your own machine"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 dependencies = ["laya>=0.3.4"]
 
 [tool.setuptools]
-py-modules = ["server", "search", "sentences"]
+py-modules = ["server", "search", "sentences", "scorer"]

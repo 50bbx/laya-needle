@@ -121,11 +121,17 @@ Laya scores passages well and picks sentences less well.
 scored 0.985 while every unrelated passage sat under 0.12. That is a wide, safe
 margin.
 
-**Short passages with word overlap are the weak spot.** Searching a Wikipedia
-article for "why does the crema form?" ranks "Espresso con panna: espresso with
-cream" above the sentence that explains crema. Navigation fragments and list
-items are the usual offenders. If you get noise, raise
-`LAYA_NEEDLE_THRESHOLD` toward `0.8`.
+**Short fragments score erratically.** On the same page, "Teen Choice Awards"
+scores 0.874 for "awards" while "Saturn Awards" scores 0.064. Wikipedia tables
+arrive as one passage per cell, so award names land as two-word fragments with
+no context and the model is inconsistent on them. The top of the ranking is
+reliable; the tail is not.
+
+**Phrase a search as a topic, not a question.** "awards" works. "what awards did
+the film win?" returns nothing. This is a find-in-page, not a chatbot.
+
+If you get noise, raise `LAYA_NEEDLE_THRESHOLD` toward `0.8`. If relevant things
+are missing, lower it toward `0.3`.
 
 **Sentence selection had to be rebuilt.** Needle asks Jev to pick the key
 sentence with one `choice` question. Laya's choice head is close to useless at
@@ -133,21 +139,36 @@ this: on a hand-labelled set of 8 passages it picked the right sentence **0
 times**, almost always the first. Scoring each sentence with its own boolean
 gets **7 of 8**. That is what this port does.
 
+**Ask what a passage is about, not what it answers.** An early version asked
+whether each passage *answered* the search, and explicitly discounted topic
+matches. That is question answering, not search, and it buried the passages a
+search exists to find: on the Wikipedia article above, the cell "Teen Choice
+Awards" scored **0.65** for the search "awards". The topical question scores it
+**0.87** and puts the award rows in the top four. Short instructions also beat
+long ones on both speed and separation, so both questions are now one line.
+
 This is a 322M model on your laptop, not a frontier model in a datacentre. It is
 free, private and fast. It is not as accurate as Jev.
 
 ## Speed
 
-Measured on an M-series Mac, `multilingual` on MPS.
+Measured on an M-series Mac, `multilingual` on MPS, against the full
+Spider-Man: Homecoming Wikipedia article.
 
 | page size | time |
 |---|---|
-| 10 passages | ~0.45 s |
-| 160 passages (the cap) | ~4.5 s |
+| a typical article section | under 0.5 s |
+| 138 passages, 60,000 characters (the cap) | **1.9 s** |
 
-That is about 28 to 35 ms per passage. Laya reads at most 512 to 1024 tokens, so
-passages are scored one at a time rather than in one batch. The key-sentence pass
-only runs on passages that already matched, which is usually a handful.
+Three things get it there. Every passage on the page is scored in **one batched
+forward pass** rather than one call each. Items are **sorted by encoded length**
+before batching, because a batch pads to its longest member, and a 2,200-char
+paragraph next to a three-word table cell otherwise wastes most of it; that took
+padding waste from 61% to 11%. And only the **first 400 characters** of a passage
+are encoded, since a search asks what a passage is about and the opening says so.
+
+Together those took the worst case from 5.6 s to 1.9 s. The sentence pass runs
+only on passages that already matched, which is usually a handful.
 
 ### Why `multilingual`
 
@@ -169,8 +190,11 @@ The backend is Python and calls Laya in-process. Node, React, Vite and the Verce
 functions are gone, along with the API key, the access token and the hosted
 deployment. One process, one port.
 
-Each passage is scored in its own forward pass. Needle puts the whole page in one
-request; Laya's context is 512 to 1024 tokens, so that would truncate silently.
+Passages are scored in batches built directly on Laya's collate, sorted by
+length, with each passage clipped to 400 characters. Needle puts the whole page
+in one request; Laya's context is 512 to 1024 tokens, so that would truncate
+silently. `scorer.py` explains the coupling, and falls back to one call per
+passage if a Laya release moves those internals.
 
 The key sentence is chosen by scoring each sentence, not by one `choice`
 question, for the accuracy reason above.
