@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "laya-needle: find by meaning, locally",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Find ideas on a page even when you don't know the exact words. Runs on Laya on your own machine.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],

@@ -34,6 +34,18 @@ AGENT = None
 LOCK = threading.Lock()  # one model on one accelerator: serialise inference
 
 
+def describe(device):
+    """torch names the accelerator; the terminal should name it for a person."""
+    name = str(device)
+    if name.startswith("mps"):
+        return "your Mac's GPU (mps)"
+    if name.startswith("cuda"):
+        return f"your graphics card ({name})"
+    if name.startswith("cpu"):
+        return "the CPU, which is slower than a GPU"
+    return name
+
+
 def load():
     global AGENT
     if MODEL not in SUBFOLDER:
@@ -42,7 +54,7 @@ def load():
     print(f"loading laya ({MODEL}); the first run downloads weights and takes a few minutes", flush=True)
     started = time.perf_counter()
     AGENT = laya.load("convaiinnovations/laya", subfolder=SUBFOLDER[MODEL])
-    print(f"ready on {AGENT.device} in {time.perf_counter() - started:.1f}s", flush=True)
+    print(f"ready in {time.perf_counter() - started:.1f}s, running on {describe(AGENT.device)}", flush=True)
 
 
 def predict(state, questions):

@@ -1,4 +1,13 @@
 const DEFAULT_SERVER = "http://127.0.0.1:8787";
+// torch names the accelerator; nobody outside torch knows what "mps" is.
+function describeDevice(device) {
+  if (!device) return "an unknown device";
+  if (device.startsWith("mps")) return "your Mac's GPU";
+  if (device.startsWith("cuda")) return "your graphics card";
+  if (device.startsWith("cpu")) return "the CPU, which is slower";
+  return device;
+}
+
 const form = document.querySelector("#settings"),
   server = document.querySelector("#server"),
   status = document.querySelector("#status");
@@ -17,7 +26,7 @@ document.querySelector("#test").addEventListener("click", async () => {
     const response = await fetch(`${new URL(server.value).origin}/api/health`);
     const data = await response.json();
     status.textContent = data.ok
-      ? `Connected. Laya "${data.model}" on ${data.device}.`
+      ? `Connected. Running on ${describeDevice(data.device)}.`
       : "Server is up but Laya is still loading. Wait a moment.";
   } catch {
     status.textContent = "No answer. Is `python server.py` running?";

@@ -40,7 +40,7 @@ in about 20 seconds. Leave it running while you use the extension.
 ```
 laya-needle listening on http://127.0.0.1:8787 (threshold 0.58)
 loading laya (multilingual); the first run downloads weights and takes a few minutes
-ready on mps in 21.8s
+ready in 21.1s, running on your Mac's GPU (mps)
 ```
 
 ## Install the extension
