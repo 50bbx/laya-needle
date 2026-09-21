@@ -1,0 +1,29 @@
+:root { color-scheme: light dark; }
+body {
+  margin: 0; padding: 40px 24px;
+  font: 15px/1.6 system-ui, sans-serif;
+  background: #f6f8f3; color: #22301f;
+}
+@media (prefers-color-scheme: dark) { body { background: #1a231a; color: #e8efe4; } }
+main { max-width: 540px; margin: 0 auto; }
+h1 { font-size: 26px; letter-spacing: -0.8px; margin: 0 0 6px; }
+pre {
+  background: #26362d; color: #d5f58d; padding: 10px 14px;
+  border-radius: 8px; overflow-x: auto; font-size: 13px;
+}
+label { display: block; font-weight: 600; margin: 22px 0 6px; }
+input {
+  width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit;
+  border: 1px solid #b9c6b7; border-radius: 8px; background: transparent; color: inherit;
+}
+input:focus-visible { outline: 2px solid #7aa33c; outline-offset: 1px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+button {
+  font: inherit; font-weight: 600; cursor: pointer; padding: 9px 16px;
+  border: 0; border-radius: 8px; background: #7aa33c; color: white;
+}
+button.secondary { background: transparent; color: inherit; border: 1px solid #b9c6b7; }
+button:hover { filter: brightness(1.08); }
+.hint { font-size: 13px; opacity: 0.75; }
+code { background: #0000000f; padding: 1px 5px; border-radius: 4px; }
+#status { min-height: 1.6em; font-size: 14px; font-weight: 600; }

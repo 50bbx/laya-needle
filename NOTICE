@@ -1,0 +1,24 @@
+laya-needle
+Copyright 2026 the laya-needle authors
+
+This product includes software developed as part of Needle, from
+awesome-llm-apps (https://github.com/Shubhamsaboo/awesome-llm-apps),
+licensed under the Apache License 2.0.
+
+Derived from Needle, with modifications:
+
+  - The Chrome extension (background.js, content.js, options.*, text-range.js)
+    and its icons come from Needle. Identifiers, default server URL, messaging
+    and copy were changed, and text-range.js now locates a sentence by its text
+    when the server offset does not match the live page.
+  - The backend was replaced. Needle calls the hosted Jev model through Vercel
+    AI Gateway from a Node server. laya-needle calls Laya
+    (https://github.com/NandhaKishorM/laya) in-process from Python, on the
+    user's own machine. Node, React, Vite and the Vercel functions were removed.
+  - Passage scoring was restructured. Needle scores every passage in one request.
+    Laya reads at most 512-1024 tokens, so each passage is scored in its own
+    forward pass.
+
+Laya is created by Nandakishor M of Convai Innovations and is licensed under the
+Apache License 2.0. This repository does not contain the model; it installs the
+`laya` package and downloads the open weights from Hugging Face.
