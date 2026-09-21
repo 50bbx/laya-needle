@@ -1,6 +1,6 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from search import ABOUT, FOCUS, search, validate, SearchError
+from search import ABOUT, FLOOR, FOCUS, MAX_MATCHES, RATIO, cutoff_for, search, validate, SearchError
 
 DOC = [
     {"id": "b0", "text": "Our plan costs $29 per month. Annual billing saves 20%."},
@@ -37,7 +37,7 @@ score = model({"Our pl": 0.04, "You ma": 0.93, "Our of": 0.02},
 result = search({"query": "cancelling", "blocks": DOC}, score)
 
 assert [s["id"] for s in result["scores"]] == ["b1", "b0", "b2"], "ranked by probability"
-assert [m["id"] for m in result["matches"]] == ["b1"], "only above threshold"
+assert [m["id"] for m in result["matches"]] == ["b1"], "only above the cutoff"
 assert result["matches"][0]["focus"]["text"] == "We do not refund unused time.", "highest sentence wins"
 assert "text" not in result["scores"][0], "passage text is not echoed back"
 
@@ -74,6 +74,34 @@ fails({"query": "q", "blocks": [{"id": "b0", "text": "x" * 2201}]}, "invalid pas
 fails({"query": "q", "blocks": [{"id": f"b{i}", "text": "x" * 1000} for i in range(61)]}, "too long")
 
 assert validate({"query": " spaced ", "blocks": DOC})["query"] == "spaced", "query is trimmed"
+
+# The cutoff scales with the best passage, so a page whose scores all sit low
+# still returns its best ones rather than nothing.
+assert cutoff_for(1.0) == RATIO, "cutoff tracks the top score"
+assert cutoff_for(0.1) == FLOOR, "the floor stops a page about nothing from matching"
+assert cutoff_for(0.6) == 0.6 * RATIO, "between the two it is proportional"
+
+low = model({"Aaaaaa": 0.40, "Bbbbbb": 0.36, "Cccccc": 0.05})
+out = search({"query": "q", "blocks": [
+    {"id": "b0", "text": "Aaaaaa is one thing"},
+    {"id": "b1", "text": "Bbbbbb is another"},
+    {"id": "b2", "text": "Cccccc is unrelated"}]}, low)
+assert [m["id"] for m in out["matches"]] == ["b0", "b1"], \
+    f"a low-scoring page still returns its best, got {[m['id'] for m in out['matches']]}"
+assert out["cutoff"] == round(max(FLOOR, 0.40 * RATIO), 4)
+
+nothing = model({"Aaaaaa": 0.05, "Bbbbbb": 0.04})
+out = search({"query": "q", "blocks": [
+    {"id": "b0", "text": "Aaaaaa is one thing"},
+    {"id": "b1", "text": "Bbbbbb is another"}]}, nothing)
+assert out["matches"] == [], "nothing relevant means no matches"
+
+# Each match costs a sentence pass, so the count is capped.
+flat = model({f"Blk{i:03}": 0.9 for i in range(40)})
+out = search({"query": "q", "blocks": [
+    {"id": f"b{i}", "text": f"Blk{i:03} first sentence. Second sentence here."} for i in range(40)]}, flat)
+assert len(out["matches"]) == MAX_MATCHES, f"capped at {MAX_MATCHES}, got {len(out['matches'])}"
+assert len(out["scores"]) == 40, "every passage is still ranked"
 
 # This is a search, not question answering. Guard the wording that regressed.
 assert "about" in ABOUT.lower() and "answer" not in ABOUT.lower(), \

@@ -17,7 +17,17 @@ MAX_QUERY = 400
 MAX_BLOCKS = 160
 MAX_BLOCK_CHARS = 2200
 MAX_TOTAL_CHARS = 60000
-THRESHOLD = 0.58
+
+# A fixed cutoff cannot work here, because the score scale moves with what a
+# passage is made of. The bare cell "Teen Choice Awards" scores 0.874 for the
+# search "awards"; the whole row, which also carries a year, a nominee and a
+# result, scores 0.531 for the same search while being the better passage to
+# show. A fixed 0.58 returned the fragment and nothing at all for the row. The
+# cutoff is therefore relative to the best passage on the page, with a floor so
+# that a page about nothing relevant still returns nothing.
+FLOOR = 0.25
+RATIO = 0.45
+MAX_MATCHES = 25  # each match costs a sentence pass
 
 ABOUT = "Is this passage about the search topic?"
 FOCUS = "Is this sentence the part that is about the search topic?"
@@ -63,14 +73,18 @@ def checked(values, expected):
     return values
 
 
-def search(body, score, threshold=THRESHOLD):
+def cutoff_for(top, floor=FLOOR, ratio=RATIO):
+    return max(floor, top * ratio)
+
+
+def search(body, score, floor=FLOOR):
     """`score(states, instructions) -> [probability]`, batched. Injected for tests."""
     request = validate(body)
     query = request["query"]
 
     blocks = [b for b in request["blocks"] if sentence_spans(b["text"])]
     if not blocks:
-        return {"scores": [], "matches": [], "threshold": threshold}
+        return {"scores": [], "matches": [], "cutoff": floor}
 
     # One pass over every passage on the page.
     probabilities = checked(
@@ -80,7 +94,8 @@ def search(body, score, threshold=THRESHOLD):
     scores.sort(key=lambda s: -s["probability"])
 
     # A second pass, over the sentences of the matches only.
-    hits = [s for s in scores if s["probability"] >= threshold]
+    cutoff = cutoff_for(scores[0]["probability"], floor)
+    hits = [s for s in scores if s["probability"] >= cutoff][:MAX_MATCHES]
     sentences = [sentence_spans(h["text"]) for h in hits]
     states, spans = [], []
     for hit, group in zip(hits, sentences):
@@ -103,5 +118,5 @@ def search(body, score, threshold=THRESHOLD):
     return {
         "scores": [{"id": s["id"], "probability": s["probability"]} for s in scores],
         "matches": matches,
-        "threshold": threshold,
+        "cutoff": round(cutoff, 4),
     }

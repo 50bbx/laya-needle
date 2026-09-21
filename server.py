@@ -19,7 +19,7 @@ os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import scorer  # noqa: E402
-from search import THRESHOLD as search_threshold_value, SearchError, search  # noqa: E402
+from search import FLOOR as search_floor, SearchError, search  # noqa: E402
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("PORT", "8787"))
@@ -28,8 +28,9 @@ PORT = int(os.environ.get("PORT", "8787"))
 MODEL = os.environ.get("LAYA_NEEDLE_MODEL", "multilingual")
 SUBFOLDER = {"english": None, "multilingual": "multilingual", "typed-decisions": "typed-decisions"}
 MAX_BODY = 512_000
-# Raise toward 0.8 for fewer, surer matches; lower for more, noisier ones.
-THRESHOLD = float(os.environ.get("LAYA_NEEDLE_THRESHOLD", search_threshold_value))
+# The lowest score that can ever match. The live cutoff also scales with the
+# best passage on the page; see search.py.
+FLOOR = float(os.environ.get("LAYA_NEEDLE_FLOOR", search_floor))
 
 AGENT = None
 SCORE = None
@@ -98,7 +99,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, {"error": "Not found."})
         self._send(200, {"ok": AGENT is not None, "model": MODEL,
                          "device": str(AGENT.device) if AGENT else None,
-                         "threshold": THRESHOLD})
+                         "floor": FLOOR})
 
     def do_POST(self):
         if self.path.split("?")[0] != "/api/search":
@@ -116,7 +117,7 @@ class Handler(BaseHTTPRequestHandler):
 
         started = time.perf_counter()
         try:
-            result = search(body, score, THRESHOLD)
+            result = search(body, score, FLOOR)
         except SearchError as e:
             return self._send(e.status, {"error": e.message})
         except Exception:
@@ -139,7 +140,7 @@ if __name__ == "__main__":
         sys.exit(f"Port {PORT} is already in use ({e.strerror}). Stop the other "
                  f"laya-needle, or start this one with PORT=8788 python server.py")
     threading.Thread(target=load, daemon=True).start()
-    print(f"laya-needle listening on http://{HOST}:{PORT} (threshold {THRESHOLD})", flush=True)
+    print(f"laya-needle listening on http://{HOST}:{PORT} (score floor {FLOOR})", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

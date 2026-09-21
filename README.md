@@ -79,7 +79,7 @@ a bright one, and **↑ / ↓** jump between matches. **Esc** closes it.
 | Health check | `http://127.0.0.1:8787/api/health` |
 | Port | `8787`, override with `PORT=8788 python server.py` |
 | Checkpoint | `multilingual`, override with `LAYA_NEEDLE_MODEL=english` |
-| Match threshold | `0.58`, override with `LAYA_NEEDLE_THRESHOLD=0.75` |
+| Score floor | `0.25`, override with `LAYA_NEEDLE_FLOOR=0.4` |
 
 The server binds to loopback only, so nothing on your network can reach it.
 
@@ -95,8 +95,9 @@ curl -s -X POST localhost:8787/api/search -H 'content-type: application/json' -d
 }'
 ```
 
-`matches` holds the passages at or above the threshold, sorted best first, each
-with the `focus` sentence and its offsets into the original passage text.
+`matches` holds the passages at or above the cutoff, sorted best first, each with
+the `focus` sentence and its offsets into the original passage text. The cutoff is
+`max(floor, 0.45 x best score on the page)`, and the response reports it.
 
 ```json
 {
@@ -109,7 +110,7 @@ with the `focus` sentence and its offsets into the original passage text.
     }
   }],
   "scores": [{"id": "b1", "probability": 0.9846}, {"id": "b0", "probability": 0.0127}],
-  "threshold": 0.58, "elapsedMs": 138, "model": "multilingual"
+  "cutoff": 0.4431, "elapsedMs": 138, "model": "multilingual"
 }
 ```
 
@@ -121,23 +122,39 @@ Laya scores passages well and picks sentences less well.
 scored 0.985 while every unrelated passage sat under 0.12. That is a wide, safe
 margin.
 
-**Short fragments score erratically.** On the same page, "Teen Choice Awards"
-scores 0.874 for "awards" while "Saturn Awards" scores 0.064. Wikipedia tables
-arrive as one passage per cell, so award names land as two-word fragments with
-no context and the model is inconsistent on them. The top of the ranking is
-reliable; the tail is not.
+**A search that matches nothing still returns something.** This is the real
+limitation. Searching that Wikipedia article for "quantum chromodynamics" returns
+a box-office sentence at 0.609, while the genuine top hit for "awards" is 0.671.
+The scores are not comparable between one search and another, so there is no
+cutoff that keeps the real matches and rejects the nonsense ones. Read the
+results as "the closest passages on this page", not "the relevant ones". A
+better-separated model would fix this; a threshold cannot.
 
 **Phrase a search as a topic, not a question.** "awards" works. "what awards did
 the film win?" returns nothing. This is a find-in-page, not a chatbot.
 
-If you get noise, raise `LAYA_NEEDLE_THRESHOLD` toward `0.8`. If relevant things
-are missing, lower it toward `0.3`.
+If you get noise, raise `LAYA_NEEDLE_FLOOR` toward `0.5`. If relevant things are
+missing, lower it toward `0.15`.
 
 **Sentence selection had to be rebuilt.** Needle asks Jev to pick the key
 sentence with one `choice` question. Laya's choice head is close to useless at
 this: on a hand-labelled set of 8 passages it picked the right sentence **0
 times**, almost always the first. Scoring each sentence with its own boolean
 gets **7 of 8**. That is what this port does.
+
+**Tables are captured one row at a time.** Needle captures each `td` as its own
+passage. A cell reading "Saturn Awards", with no column heading and no row around
+it, is a fragment the model cannot place: it scored **0.064** for the search
+"awards", while the cell "Teen Choice Awards" scored 0.874 on the same page. The
+row is the smallest unit that still means something, so rows are joined into one
+passage and their cells are not captured separately. That row now scores
+**0.671**, and the award rows take five of the top six results. Cells use rendered
+text rather than `textContent`, because an infobox heading split across two block
+elements concatenates into junk like "Productioncompanies".
+
+**The cutoff is relative, not fixed.** The score scale moves with what a passage
+is made of, so the same fixed number cannot serve both a bare cell and a full row.
+Matches are taken at `max(floor, 0.45 x the best score on the page)`.
 
 **Ask what a passage is about, not what it answers.** An early version asked
 whether each passage *answered* the search, and explicitly discounted topic

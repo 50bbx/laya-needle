@@ -19,8 +19,23 @@
   let active = 0, matches = [], generation = 0, timer, closed = false,
     blocks = [], highlightStyle = null;
 
+  // A table cell on its own says nothing: "Saturn Awards" with no column and no
+  // row is a fragment the model cannot score. The row is the smallest unit that
+  // still means something, so rows are captured whole and their cells are not.
+  function passageText(el) {
+    if (el.tagName !== "TR") return el.textContent.trim();
+    const cells = [...el.querySelectorAll("th,td")]
+      .filter((c) => !c.querySelector("th,td"))
+      // innerText, not textContent: an infobox header split across two block
+      // elements concatenates to "Productioncompanies" under textContent, and
+      // that junk token scored 0.44 against a search about asparagus.
+      .map((c) => (c.innerText ?? c.textContent).trim().replace(/\s+/g, " "))
+      .filter(Boolean);
+    return cells.join(" · ");
+  }
+
   function collect() {
-    const candidates = [...document.querySelectorAll("p,li,pre,blockquote,h1,h2,h3,h4,td,figcaption")];
+    const candidates = [...document.querySelectorAll("p,li,pre,blockquote,h1,h2,h3,h4,tr,figcaption")];
     let size = 0, truncated = false;
     const selected = candidates.filter(
       (el) =>
@@ -28,10 +43,18 @@
         el.getClientRects().length &&
         getComputedStyle(el).visibility !== "hidden",
     );
+    const rows = new Set(selected.filter((el) => el.tagName === "TR"));
     blocks = [];
     for (const el of selected) {
-      if (selected.some((other) => other !== el && el.contains(other))) continue;
-      const text = el.textContent.trim();
+      if (el.tagName === "TR") {
+        // Nested tables: keep the innermost row.
+        if (selected.some((other) => other !== el && other.tagName === "TR" && el.contains(other))) continue;
+      } else {
+        // A row owns everything inside it, so its cells' contents are not separate passages.
+        if ([...rows].some((row) => row.contains(el))) continue;
+        if (selected.some((other) => other !== el && el.contains(other))) continue;
+      }
+      const text = passageText(el);
       if (text.length < 12) continue;
       if (text.length > 2200) { truncated = true; continue; }
       if (blocks.length >= 160 || size + text.length > 60000) { truncated = true; break; }
