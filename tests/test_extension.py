@@ -56,6 +56,8 @@ assert "block.raw" in content and "!== block.text" not in content, \
     "check freshness against the element's own text, not the text sent to the server"
 assert "raw: el.textContent.trim()" in content, "each block must keep the element's own text"
 assert "block.row" in content, "a row highlights whole; no sentence of it exists as one DOM run"
+assert "getManifest().version" in content, \
+    "the panel shows its version, so a stale build is visible without opening chrome://extensions"
 
 # The default server URL must agree across the extension and the server.
 default = re.search(r'DEFAULT_SERVER = "([^"]+)"', options_js).group(1)

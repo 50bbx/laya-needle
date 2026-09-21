@@ -1,6 +1,6 @@
 [project]
 name = "laya-needle"
-version = "1.3.1"
+version = "1.3.2"
 description = "Find webpage passages by meaning, using Laya on your own machine"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

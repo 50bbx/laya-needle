@@ -108,7 +108,8 @@
       blocks.push({ id: `b${blocks.length}`, text, raw: el.textContent.trim(), row: el.tagName === "TR", el });
       size += text.length;
     }
-    detail.textContent = `${blocks.length} readable passages${truncated ? " · some content omitted" : ""} · scored locally by Laya.`;
+    const version = chrome.runtime.getManifest().version;
+    detail.textContent = `v${version} · ${blocks.length} readable passages${truncated ? " · some content omitted" : ""} · scored locally by Laya.`;
   }
 
   function clearHighlights() {
