@@ -1,6 +1,6 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from search import ABOUT, FLOOR, FOCUS, MAX_MATCHES, RATIO, cutoff_for, search, validate, SearchError
+from search import ABOUT, ALWAYS, FLOOR, FOCUS, MAX_MATCHES, RATIO, search, take, validate, SearchError
 
 DOC = [
     {"id": "b0", "text": "Our plan costs $29 per month. Annual billing saves 20%."},
@@ -75,28 +75,42 @@ fails({"query": "q", "blocks": [{"id": f"b{i}", "text": "x" * 1000} for i in ran
 
 assert validate({"query": " spaced ", "blocks": DOC})["query"] == "spaced", "query is trimmed"
 
-# The cutoff scales with the best passage, so a page whose scores all sit low
-# still returns its best ones rather than nothing.
-assert cutoff_for(1.0) == RATIO, "cutoff tracks the top score"
-assert cutoff_for(0.1) == FLOOR, "the floor stops a page about nothing from matching"
-assert cutoff_for(0.6) == 0.6 * RATIO, "between the two it is proportional"
+# A search shows a ranked list. The top few are always shown, because a passage
+# ranked 3rd of 120 is an answer even when its score is low.
+def ranked(*probabilities):
+    return [{"id": f"b{i}", "probability": p} for i, p in enumerate(probabilities)]
 
-low = model({"Aaaaaa": 0.40, "Bbbbbb": 0.36, "Cccccc": 0.05})
+assert [s["id"] for s in take(ranked(0.9, 0.8, 0.7, 0.6))] == ["b0", "b1", "b2", "b3"], "close contenders kept"
+assert [s["id"] for s in take(ranked(0.9, 0.2, 0.15, 0.1))] == ["b0", "b1", "b2"], \
+    "the top few survive a steep drop-off"
+assert [s["id"] for s in take(ranked(0.9, 0.5, 0.44, 0.1))] == ["b0", "b1", "b2"], \
+    "past the first few, only what is close to the best"
+assert [s["id"] for s in take(ranked(0.1, 0.9, 0.5))] == ["b1", "b2", "b0"], \
+    "take orders by score, whatever order it is given"
+assert take(ranked(0.04, 0.01)) == [], "a page scoring near zero shows nothing"
+assert len(take(ranked(*([0.9] * 20)))) == MAX_MATCHES, f"capped at {MAX_MATCHES}"
+assert len(take(ranked(0.9, 0.06))) == 2, "the floor, not ALWAYS, decides when there are too few"
+
+# The regression this rule exists for: "Budget · $175 million" ranks 3rd of 120
+# for the search "cost" at 0.277, and used to be dropped by a fixed cutoff.
+page = ranked(0.75, 0.67, 0.277, 0.2, 0.15)
+assert "b2" in [s["id"] for s in take(page)], "a good rank with a low score is still shown"
+
+low = model({"Aaaaaa": 0.40, "Bbbbbb": 0.36, "Cccccc": 0.01})
 out = search({"query": "q", "blocks": [
     {"id": "b0", "text": "Aaaaaa is one thing"},
     {"id": "b1", "text": "Bbbbbb is another"},
     {"id": "b2", "text": "Cccccc is unrelated"}]}, low)
 assert [m["id"] for m in out["matches"]] == ["b0", "b1"], \
-    f"a low-scoring page still returns its best, got {[m['id'] for m in out['matches']]}"
-assert out["cutoff"] == round(max(FLOOR, 0.40 * RATIO), 4)
+    f"a low-scoring page still returns its best, and drops what is under the floor, " \
+    f"got {[m['id'] for m in out['matches']]}"
 
-nothing = model({"Aaaaaa": 0.05, "Bbbbbb": 0.04})
+nothing = model({"Aaaaaa": 0.02, "Bbbbbb": 0.01})
 out = search({"query": "q", "blocks": [
     {"id": "b0", "text": "Aaaaaa is one thing"},
     {"id": "b1", "text": "Bbbbbb is another"}]}, nothing)
-assert out["matches"] == [], "nothing relevant means no matches"
+assert out["matches"] == [], "nothing above the floor means no matches"
 
-# Each match costs a sentence pass, so the count is capped.
 flat = model({f"Blk{i:03}": 0.9 for i in range(40)})
 out = search({"query": "q", "blocks": [
     {"id": f"b{i}", "text": f"Blk{i:03} first sentence. Second sentence here."} for i in range(40)]}, flat)

@@ -18,16 +18,18 @@ MAX_BLOCKS = 160
 MAX_BLOCK_CHARS = 2200
 MAX_TOTAL_CHARS = 60000
 
-# A fixed cutoff cannot work here, because the score scale moves with what a
-# passage is made of. The bare cell "Teen Choice Awards" scores 0.874 for the
-# search "awards"; the whole row, which also carries a year, a nominee and a
-# result, scores 0.531 for the same search while being the better passage to
-# show. A fixed 0.58 returned the fragment and nothing at all for the row. The
-# cutoff is therefore relative to the best passage on the page, with a floor so
-# that a page about nothing relevant still returns nothing.
-FLOOR = 0.25
-RATIO = 0.45
-MAX_MATCHES = 25  # each match costs a sentence pass
+# A search shows a ranked list; it does not filter. Two measurements forced this.
+# Scores are not comparable between searches, so no cutoff tells a weak match
+# from a page that has none: "quantum chromodynamics" tops out at 0.609 on an
+# article about a film, while the genuine best hit for "awards" is 0.671. And a
+# cutoff hides good rankings: the row "Budget · $175 million" ranks 3rd of 120
+# for the search "cost", which is a useful answer, but scores 0.277 and was
+# dropped. So the best few are always shown, in order, and the floor only
+# removes passages that scored near zero.
+FLOOR = 0.05
+ALWAYS = 3        # shown even when they score poorly, because rank 3 of 120 is an answer
+MAX_MATCHES = 8   # beyond this it is noise, and each one costs a sentence pass
+RATIO = 0.45      # past ALWAYS, keep only what is close to the best on the page
 
 ABOUT = "Is this passage about the search topic?"
 FOCUS = "Is this sentence the part that is about the search topic?"
@@ -73,8 +75,15 @@ def checked(values, expected):
     return values
 
 
-def cutoff_for(top, floor=FLOOR, ratio=RATIO):
-    return max(floor, top * ratio)
+def take(scores, floor=FLOOR):
+    """The best few, in order. Always the top ALWAYS, then only close contenders."""
+    above = sorted((s for s in scores if s["probability"] >= floor),
+                   key=lambda s: -s["probability"])
+    if not above:
+        return []
+    cutoff = max(floor, above[0]["probability"] * RATIO)
+    keep = [s for n, s in enumerate(above) if n < ALWAYS or s["probability"] >= cutoff]
+    return keep[:MAX_MATCHES]
 
 
 def search(body, score, floor=FLOOR):
@@ -84,7 +93,7 @@ def search(body, score, floor=FLOOR):
 
     blocks = [b for b in request["blocks"] if sentence_spans(b["text"])]
     if not blocks:
-        return {"scores": [], "matches": [], "cutoff": floor}
+        return {"scores": [], "matches": [], "floor": floor}
 
     # One pass over every passage on the page.
     probabilities = checked(
@@ -93,9 +102,8 @@ def search(body, score, floor=FLOOR):
               for b, p in zip(blocks, probabilities)]
     scores.sort(key=lambda s: -s["probability"])
 
-    # A second pass, over the sentences of the matches only.
-    cutoff = cutoff_for(scores[0]["probability"], floor)
-    hits = [s for s in scores if s["probability"] >= cutoff][:MAX_MATCHES]
+    # A second pass, over the sentences of the shown passages only.
+    hits = take(scores, floor)
     sentences = [sentence_spans(h["text"]) for h in hits]
     states, spans = [], []
     for hit, group in zip(hits, sentences):
@@ -118,5 +126,5 @@ def search(body, score, floor=FLOOR):
     return {
         "scores": [{"id": s["id"], "probability": s["probability"]} for s in scores],
         "matches": matches,
-        "cutoff": round(cutoff, 4),
+        "floor": floor,
     }

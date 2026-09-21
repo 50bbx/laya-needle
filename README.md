@@ -79,7 +79,7 @@ a bright one, and **↑ / ↓** jump between matches. **Esc** closes it.
 | Health check | `http://127.0.0.1:8787/api/health` |
 | Port | `8787`, override with `PORT=8788 python server.py` |
 | Checkpoint | `multilingual`, override with `LAYA_NEEDLE_MODEL=english` |
-| Score floor | `0.25`, override with `LAYA_NEEDLE_FLOOR=0.4` |
+| Score floor | `0.05`, override with `LAYA_NEEDLE_FLOOR=0.2` |
 
 The server binds to loopback only, so nothing on your network can reach it.
 
@@ -95,9 +95,10 @@ curl -s -X POST localhost:8787/api/search -H 'content-type: application/json' -d
 }'
 ```
 
-`matches` holds the passages at or above the cutoff, sorted best first, each with
-the `focus` sentence and its offsets into the original passage text. The cutoff is
-`max(floor, 0.45 x best score on the page)`, and the response reports it.
+`matches` holds the best few passages, sorted best first, each with the `focus`
+sentence and its offsets into the original passage text. That is always the top 3
+above the floor, plus any others scoring within 45% of the best, capped at 8.
+`scores` ranks every passage on the page.
 
 ```json
 {
@@ -110,7 +111,7 @@ the `focus` sentence and its offsets into the original passage text. The cutoff 
     }
   }],
   "scores": [{"id": "b1", "probability": 0.9846}, {"id": "b0", "probability": 0.0127}],
-  "cutoff": 0.4431, "elapsedMs": 138, "model": "multilingual"
+  "floor": 0.05, "elapsedMs": 138, "model": "multilingual"
 }
 ```
 
@@ -122,13 +123,23 @@ Laya scores passages well and picks sentences less well.
 scored 0.985 while every unrelated passage sat under 0.12. That is a wide, safe
 margin.
 
-**A search that matches nothing still returns something.** This is the real
-limitation. Searching that Wikipedia article for "quantum chromodynamics" returns
-a box-office sentence at 0.609, while the genuine top hit for "awards" is 0.671.
-The scores are not comparable between one search and another, so there is no
-cutoff that keeps the real matches and rejects the nonsense ones. Read the
-results as "the closest passages on this page", not "the relevant ones". A
-better-separated model would fix this; a threshold cannot.
+**It matches words more than meaning.** This is the sharpest limit. On that
+Wikipedia article the row `Budget · $175 million` scores **0.820** for the search
+"budget" and **0.277** for "cost". Same row, same meaning, different word. It
+still ranks 3rd of 120 so you will find it, but the premise of finding what you
+mean rather than what you typed only half holds.
+
+Coaching the instruction does not help. An instruction spelling out *"a budget is
+a cost, a release date is when it came out"* was measured against four others on
+eight queries and came **last**, 1 correct out of 8 against 5 for the one-line
+version now in use. Every attempt to explain synonyms made it worse.
+
+**A search that matches nothing still returns something.** Searching that article
+for "quantum chromodynamics" returns a box-office sentence at 0.609, while the
+genuine top hit for "awards" is 0.671. Scores are not comparable between one
+search and another, so no cutoff keeps the real matches and rejects the nonsense
+ones. Read the results as "the closest passages on this page", not "the relevant
+ones".
 
 **Phrase a search as a topic, not a question.** "awards" works. "what awards did
 the film win?" returns nothing. This is a find-in-page, not a chatbot.
@@ -152,9 +163,12 @@ passage and their cells are not captured separately. That row now scores
 text rather than `textContent`, because an infobox heading split across two block
 elements concatenates into junk like "Productioncompanies".
 
-**The cutoff is relative, not fixed.** The score scale moves with what a passage
-is made of, so the same fixed number cannot serve both a bare cell and a full row.
-Matches are taken at `max(floor, 0.45 x the best score on the page)`.
+**It shows a ranked list, it does not filter.** Every cutoff tried was wrong in
+one direction or the other. The row `Budget · $175 million` ranks **3rd of 120**
+passages for the search "cost", which is a useful answer, but it scores 0.277 and
+any threshold that admitted it also admitted junk. So the best few are always
+shown in order, and the floor only drops passages that scored near zero. Press
+the down arrow; the answer is usually one or two below the top.
 
 **Ask what a passage is about, not what it answers.** An early version asked
 whether each passage *answered* the search, and explicitly discounted topic
